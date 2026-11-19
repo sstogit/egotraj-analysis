@@ -35,9 +35,15 @@ plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
 plt.rcParams["axes.unicode_minus"] = False
 
 BASE = Path(__file__).resolve().parent
+ROOT = Path(os.environ.get("EGOTRAJ_ROOT",
+                         str(BASE.parents[1] if len(BASE.parents) > 1 else BASE)))
+
 SAMPLE_DIR = BASE / "checkpoints" / "EgoTraj-TBD" / "samples"
-NPZ = BASE.parents[1] / "01-数据" / "L2-processed" / "EgoTraj-TBD-v1.1" / "egotraj_tbd_test.npz"
-OUT_DIR = BASE.parents[1] / "03-结果" / "图片"
+if not SAMPLE_DIR.exists():
+    SAMPLE_DIR = ROOT / "02-程序" / "EgoTraj-Bench" / "checkpoints" / "EgoTraj-TBD" / "samples"
+SAMPLE_DIR = Path(os.environ.get("EGOTRAJ_SAMPLES", str(SAMPLE_DIR)))
+NPZ = ROOT / "01-数据" / "L2-processed" / "EgoTraj-TBD-v1.1" / "egotraj_tbd_test.npz"
+OUT_DIR = ROOT / "03-结果" / "图片"
 
 
 def load_pkls():

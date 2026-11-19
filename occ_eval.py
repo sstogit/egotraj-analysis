@@ -33,9 +33,15 @@ plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
 plt.rcParams["axes.unicode_minus"] = False
 
 BASE = Path(__file__).resolve().parent
+ROOT = Path(os.environ.get("EGOTRAJ_ROOT",
+                         str(BASE.parents[1] if len(BASE.parents) > 1 else BASE)))
+
 DEFAULT_SAMPLES = BASE / "checkpoints" / "EgoTraj-TBD" / "samples"
-NPZ = BASE.parents[1] / "01-数据" / "L2-processed" / "EgoTraj-TBD-v1.1" / "egotraj_tbd_test.npz"
-RESULTS = BASE.parents[1] / "03-结果" / "评测"
+if not DEFAULT_SAMPLES.exists():
+    DEFAULT_SAMPLES = ROOT / "02-程序" / "EgoTraj-Bench" / "checkpoints" / "EgoTraj-TBD" / "samples"
+DEFAULT_SAMPLES = Path(os.environ.get("EGOTRAJ_SAMPLES", str(DEFAULT_SAMPLES)))
+NPZ = ROOT / "01-数据" / "L2-processed" / "EgoTraj-TBD-v1.1" / "egotraj_tbd_test.npz"
+RESULTS = ROOT / "03-结果" / "评测"
 
 
 def load_predictions(samples_dir):

@@ -38,12 +38,18 @@ plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "SimSun"]
 plt.rcParams["axes.unicode_minus"] = False
 
 BASE = Path(__file__).resolve().parent      # 本脚本所在目录 = 仓库根目录
+ROOT = Path(os.environ.get("EGOTRAJ_ROOT",
+                         str(BASE.parents[1] if len(BASE.parents) > 1 else BASE)))
+
 SAMPLE_DIR = BASE / "checkpoints" / "EgoTraj-TBD" / "samples"
+if not SAMPLE_DIR.exists():
+    SAMPLE_DIR = ROOT / "02-程序" / "EgoTraj-Bench" / "checkpoints" / "EgoTraj-TBD" / "samples"
+SAMPLE_DIR = Path(os.environ.get("EGOTRAJ_SAMPLES", str(SAMPLE_DIR)))
 
 
 def output_dir(*parts):
     """输出写到 项目根\03-结果\<子目录>；若项目结构不存在，退回脚本目录。"""
-    root = BASE.parents[1] / "03-结果"
+    root = ROOT / "03-结果"
     if not root.is_dir():
         root = BASE
     d = root.joinpath(*parts)
