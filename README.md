@@ -11,28 +11,55 @@ Companion scripts for reproducing and stratifying **EgoTraj-Bench**.
 Upstream code reports a single average minADE/minFDE. These scripts ask a different
 question: **where does the error actually come from?**
 
-Results on the EgoTraj-TBD test split (9,828 samples, K=20):
+## A data caveat found the hard way
 
-| stratum | n | share | minADE | share of total error |
+The 9,828 test samples are **not 9,828 pedestrians**:
+
+| subset | n | share | minADE | minFDE | share of error mass |
+|---|---:|---:|---:|---:|---:|
+| ego row (robot itself) | 6,908 | 70.3% | 0.1920 | 0.3222 | 45.0% |
+| pedestrians | 2,920 | 29.7% | 0.5546 | 0.7198 | 55.0% |
+| all | 9,828 | 100% | 0.2997 | 0.4403 | 100% |
+
+The 6,908 zero-noise rows are the **ego row itself**: exactly one per scene, all eight
+history frames valid, and `img_x` is `640` for every frame (the image centre of a
+1280x720 frame) — where the camera projects onto itself. Every other row has
+`img_x != 640` in all frames. This matches the paper's setting, where the robot
+trajectory comes from odometry and is always observable.
+
+**Consequence:** stratifying naively on observation noise splits "robot vs pedestrian",
+not "clean vs noisy". That produces a spurious eta-squared of 0.39. Restricted to the
+2,920 pedestrian samples the numbers are:
+
+| stratum | n | noise (m) | minADE | minFDE |
 |---|---:|---:|---:|---:|
-| clean (noise = 0) | 6,908 | 70.3% | 0.1920 | 45.0% |
-| Q1 | 730 | 7.4% | 0.3695 | 9.2% |
-| Q2 | 730 | 7.4% | 0.4778 | 11.8% |
-| Q3 | 730 | 7.4% | 0.6014 | 14.9% |
-| Q4 | 730 | 7.4% | 0.7696 | 19.1% |
+| Q1 | 730 | 0.3654 | 0.3695 | 0.5130 |
+| Q2 | 730 | 0.6180 | 0.4778 | 0.6397 |
+| Q3 | 730 | 0.9588 | 0.6014 | 0.7871 |
+| Q4 | 730 | 1.5994 | 0.7696 | 0.9391 |
 
-Variance explained (eta-squared) by candidate variables:
-observation noise **0.39**, travel length 0.06, speed change 0.06, history speed 0.02.
+Variance explained (eta-squared), pedestrians only:
 
-Occlusion is a step, not a gradient: samples missing a single frame already show
-**2.92x** the error of clean ones (0.5883 m vs 0.2016 m).
+| variable | eta-squared |
+|---|---:|
+| travel length | 0.196 |
+| history speed | 0.198 |
+| |accel| | 0.119 |
+| **observation noise** | **0.080** |
+| missing-frame count | 0.038 |
+
+Missing observations within pedestrians: 0.3569 m (n=426, fully observed) vs 0.5883 m
+(n=2,494, any missing) — **1.65x**, not a step.
+
+Note that ADE is in metres, so longer motion mechanically inflates absolute error; the
+travel/speed entries are a scale effect, not a causal driver.
 
 ## Scripts
 
 | file | purpose |
 |---|---|
 | `analyze_per_sample.py` | stratify test samples by observation noise; writes `per_sample_*.npz/.csv`, figures, and `summary.csv` |
-| `occ_eval.py` | occlusion-stratified evaluation for any model's `samples/*.pkl` |
+| `occ_eval.py` | occlusion-stratified evaluation for any model's per-sample predictions |
 | `plot_speed_noise.py` | speed x noise grid |
 | `plot_travel_strata.py` | travel-length-stratified analysis |
 | `plot_accel.py` | acceleration analysis and eta-squared ranking |
@@ -93,16 +120,16 @@ python analyze_per_sample.py --fde official --clean 1e-6
 python occ_eval.py --tag biflow --expect 0.2997
 ```
 
-`occ_eval.py` takes `--samples <dir>` so that any model whose predictions are dumped
-in the same `visual_mode_best_batch_*.pkl` format can be evaluated with one command.
+`occ_eval.py` takes `--samples <dir>` so that any model whose per-sample predictions are
+dumped in the benchmark's export format can be evaluated with one command.
 
 ## Notes
 
 - `load_predictions()` sorts batch files by **numeric** index. Lexicographic sorting
   puts `batch_10` before `batch_2`, which silently misaligns predictions against the
   L2 arrays.
-- `analyze_per_sample.py` reads the export with `rotate=True` applied by the upstream
-  dataloader, so its coordinates are per-sample rotated; the `.npz` test split is not.
-  Rotational-invariant quantities (path length) match to 4e-6.
+- The exported `hist_gt` has the upstream dataloader's `rotate=True` applied, so its
+  coordinates are per-sample rotated; the `.npz` test split is not. Rotation-invariant
+  quantities (path length) match to 4e-6.
 - Reproduced numbers: minADE 0.2997 / minFDE 0.4403 at K=20, against the README's
   0.30 / 0.44. The 0.19 / 0.27 in the paper body belongs to an earlier data release.
